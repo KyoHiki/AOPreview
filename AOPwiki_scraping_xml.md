@@ -3,7 +3,7 @@ AOP wiki web scraping
 Kyoshiro HIKI
 
 ``` r
-knitr::opts_chunk$set(echo = TRUE, message=FALSE) #echo=TRUE
+knitr::opts_chunk$set(echo = TRUE, message=FALSE,fig.path = "AOPwiki_figs/README-") #echo=TRUE
 ```
 
 # Get the xml file from AOP wiki through the following web page.
@@ -174,7 +174,7 @@ ker_level2 <- transform(ker_level, Level=factor(Level,levels=c("Low","Moderate",
 ggplot(ker_level2) +geom_bar(aes(x=Level,y=value,fill=Type),stat = "identity", position = "dodge")+ylab("Number of KERs")+ theme_classic(base_size = 20)+ theme(axis.text=element_text(colour = "black"),legend.position = c(0.01, 1), legend.justification = c(0, 1))+labs(fill = "")
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/read.xml-1.png)<!-- -->
+![](AOPwiki_figs/README-read.xml-1.png)<!-- -->
 
 ``` r
 # KE as data.frame format
@@ -630,7 +630,7 @@ l <- layout_with_fr(g)
 plot(g, vertex.label=NA, layout = l, edge.vertex.size=0.4, vertex.size=3,edge.arrow.size=0.2)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-1.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-1.png)<!-- -->
 
 ``` r
 # Distance
@@ -680,7 +680,7 @@ V(largest_g)$ color <- ifelse (  V(largest_g)$KE_type == "MIE", "lightgreen",   
  plot(largest_g, vertex.label=NA, vertex.size=3, edge.arrow.size=0.1,  layout = l)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-2.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-2.png)<!-- -->
 
 ``` r
 dist_lg <- distances(largest_g)
@@ -689,7 +689,7 @@ dist_lg2[!is.finite(dist_lg2)] <- 0
 hist(dist_lg2)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-3.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-3.png)<!-- -->
 
 ``` r
 # Strongly connected components
@@ -1660,7 +1660,7 @@ l <- layout_with_fr(largest_gs)
 plot(largest_gs, vertex.label=NA, vertex.size=5, edge.arrow.size=0.2,  layout = l)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-4.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-4.png)<!-- -->
 
 ``` r
 dist_lgs <- distances(largest_gs)
@@ -1669,7 +1669,7 @@ dist_lgs2[!is.finite(dist_lgs2)] <- 0
 hist(dist_lgs2)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-5.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-5.png)<!-- -->
 
 ``` r
 # Draw graph again, but with the largest strongly connected components
@@ -1693,7 +1693,7 @@ plot(g2, vertex.size=3, vertex.color=V(g2)$scc_col, vertex.frame.color=V(g2)$scc
      edge.width=5, edge.color=E(g2)$scc_col, edge.arrow.size=0, layout=l2, add=TRUE)
 ```
 
-![](2019.12.24_AOPwiki_scraping_xml_files/figure-gfm/aop.network.analysis-6.png)<!-- -->
+![](AOPwiki_figs/README-aop.network.analysis-6.png)<!-- -->
 
 ``` r
 # Investigate KEs of the largest strongly connected components
