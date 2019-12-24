@@ -19,7 +19,7 @@ require(tidyverse)
 require(magrittr)
 require(purrr)
 require(ggplot2)
-
+ 
 
 data.xml <- xmlInternalTreeParse("aop-wiki-xml-2019-07-01.xml") %>% xmlToList
 length(data.xml)
