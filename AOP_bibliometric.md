@@ -31,7 +31,7 @@ M <- convert2df(D, dbsource = "isi", format = "plaintext")
     ## 
     ## 
     ## Generating affiliation field tag AU_UN from C1:  Done!
-
+ 
 ``` r
 dim(M)
 ```
