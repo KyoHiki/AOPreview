@@ -1,6 +1,6 @@
 AOP wiki web scraping
 ================
-Kyoshiro HIKI
+
 
 ``` r
 knitr::opts_chunk$set(echo = TRUE, message=FALSE,fig.path = "AOPwiki_figs/AOPwiki-") #echo=TRUE
