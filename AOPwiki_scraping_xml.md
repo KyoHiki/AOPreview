@@ -3,14 +3,14 @@ AOP wiki web scraping
 Kyoshiro HIKI
 
 ``` r
-knitr::opts_chunk$set(echo = TRUE, message=FALSE,fig.path = "AOPwiki_figs/README-") #echo=TRUE
+knitr::opts_chunk$set(echo = TRUE, message=FALSE,fig.path = "AOPwiki_figs/AOPwiki-") #echo=TRUE
 ```
 
 # Get the xml file from AOP wiki through the following web page.
 
 <https://aopwiki.org/info_pages/5>
 
-# Make a dataset tidy
+# Read xml file and make the dataset tidy
 
 ``` r
 require(XML)
@@ -19,7 +19,8 @@ require(tidyverse)
 require(magrittr)
 require(purrr)
 require(ggplot2)
- 
+
+
 
 data.xml <- xmlInternalTreeParse("aop-wiki-xml-2019-07-01.xml") %>% xmlToList
 length(data.xml)
@@ -174,7 +175,7 @@ ker_level2 <- transform(ker_level, Level=factor(Level,levels=c("Low","Moderate",
 ggplot(ker_level2) +geom_bar(aes(x=Level,y=value,fill=Type),stat = "identity", position = "dodge")+ylab("Number of KERs")+ theme_classic(base_size = 20)+ theme(axis.text=element_text(colour = "black"),legend.position = c(0.01, 1), legend.justification = c(0, 1))+labs(fill = "")
 ```
 
-![](AOPwiki_figs/README-read.xml-1.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-read.xml-1.png)<!-- -->
 
 ``` r
 # KE as data.frame format
@@ -200,6 +201,133 @@ table(ke_all[,"Type"])
     ## 
     ##  MIE   KE   AO 
     ##  195 1089  216
+
+``` r
+KE_id <- keyevent %>%
+  map(., function(x) c(x$".attrs"[1]) ) %>%
+  unlist %>% 
+  data.frame
+KE_name<- keyevent %>%
+  map(., function(x) c(x$"short-name"[1]) ) %>% 
+  sapply(., function(x) ifelse(is.null(x), NA, x)) %>%
+  unlist %>% 
+  data.frame
+KE_level <- keyevent %>%
+  map(., function(x) c(x$"biological-organization-level"[1]) ) %>%
+  sapply(., function(x) ifelse(is.null(x), NA, x)) %>%
+  unlist %>% 
+  data.frame
+KE_list_pre <- data.frame(KE_id,KE_name,KE_level)  #includes KEs in archived AOPs
+colnames(KE_list_pre) <- c("ID","Title","Level")
+
+
+KE_list <- KE_list_pre[ match(ke_all$ID,KE_list_pre$ID),] # removes archived AOPs
+KE_list$ID <- factor(KE_list$ID )
+KE_list$Title <- factor(KE_list$Title )
+KE_list$Level <- factor(KE_list$Level )
+KE_list <- cbind(KE_list,Type=ke_all$Type)
+head(KE_list)
+```
+
+    ##                                      ID
+    ## 6  43b4c7ec-3f7d-4764-ade1-959581482b97
+    ## 12 67d3c099-6a57-4961-8446-8cd035bbf6ad
+    ## 27 1bb51018-0ccf-495c-bbcc-dffa02573469
+    ## 34 0f37e11e-1f92-46d4-a3ab-c26ed51d4a1f
+    ## 47 8b6d9a9c-f432-495f-9bba-c9a214e222bf
+    ## 54 b6bc185d-56f2-41c4-953b-3f9247739c71
+    ##                                                               Title
+    ## 6  Binding of inhibitor, NADH-ubiquinone oxidoreductase (complex I)
+    ## 12                                            Increase, EcR agonism
+    ## 27                                Binding of antagonist, PPAR alpha
+    ## 34        reduction in ovarian granulosa cells, Aromatase (Cyp19a1)
+    ## 47              Binding at picrotoxin site, iGABAR chloride channel
+    ## 54                            Binding of antagonist, NMDA receptors
+    ##        Level Type
+    ## 6  Molecular  MIE
+    ## 12 Molecular  MIE
+    ## 27 Molecular  MIE
+    ## 34  Cellular  MIE
+    ## 47 Molecular  MIE
+    ## 54 Molecular  MIE
+
+``` r
+#Frequency of level of biological organization
+table(KE_list$Level)
+```
+
+    ## 
+    ##   Cellular Individual  Molecular      Organ Population     Tissue 
+    ##        459        175        417        150         79        220
+
+``` r
+#most freqeunt MIE
+head( sort( table(filter(KE_list,Type=="MIE")$Title),decreasing=TRUE ) )
+```
+
+    ## 
+    ##              Activation, Nicotinic acetylcholine receptor 
+    ##                                                         9 
+    ##                       Inhibition, Cyclooxygenase activity 
+    ##                                                         6 
+    ## Inhibition, 5-hydroxytryptamine transporter (5-HTT; SERT) 
+    ##                                                         5 
+    ##                               Thyroperoxidase, Inhibition 
+    ##                                                         5 
+    ##                                           Activation, AhR 
+    ##                                                         4 
+    ##                                Inhibition, sodium channel 
+    ##                                                         4
+
+``` r
+#Most frequent AO
+head( sort( table(filter(KE_list,Type=="AO")$Title),decreasing=TRUE ) )
+```
+
+    ## 
+    ##                          Death/Failure, Colony 
+    ##                                             13 
+    ##                Decrease, Population trajectory 
+    ##                                             10 
+    ##                           Increased, Mortality 
+    ##                                              9 
+    ##               Altered, Amphibian metamorphosis 
+    ##                                              8 
+    ##                            Decrease, Fecundity 
+    ##                                              6 
+    ## Increase, Adenomas/carcinomas (hepatocellular) 
+    ##                                              5
+
+``` r
+#Number of unique KEs
+length( sort( table(KE_list$ID),decreasing=TRUE ) )
+```
+
+    ## [1] 919
+
+``` r
+#Remove duplicated KEs and count the number again
+KE_list_ident <- KE_list %>% distinct(ID,.keep_all=TRUE)
+dim(KE_list_ident)
+```
+
+    ## [1] 919   4
+
+``` r
+table(KE_list_ident$Type)
+```
+
+    ## 
+    ## MIE  KE  AO 
+    ## 143 675 101
+
+``` r
+table(KE_list_ident$Level)
+```
+
+    ## 
+    ##   Cellular Individual  Molecular      Organ Population     Tissue 
+    ##        305         93        265         88         22        146
 
 ``` r
 data.frame(No_of_AOP= length(aop), No_of_KE= nrow(ke_all), No_of_KER = nrow(ker_df2))
@@ -630,7 +758,7 @@ l <- layout_with_fr(g)
 plot(g, vertex.label=NA, layout = l, edge.vertex.size=0.4, vertex.size=3,edge.arrow.size=0.2)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-1.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-1.png)<!-- -->
 
 ``` r
 # Distance
@@ -680,7 +808,7 @@ V(largest_g)$ color <- ifelse (  V(largest_g)$KE_type == "MIE", "lightgreen",   
  plot(largest_g, vertex.label=NA, vertex.size=3, edge.arrow.size=0.1,  layout = l)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-2.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-2.png)<!-- -->
 
 ``` r
 dist_lg <- distances(largest_g)
@@ -689,7 +817,1305 @@ dist_lg2[!is.finite(dist_lg2)] <- 0
 hist(dist_lg2)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-3.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-3.png)<!-- -->
+
+``` r
+# Investigate KEs of the largest weakly connected components
+na.exclude( KE_list_ident[match(V(largest_g)$name,KE_list_ident$ID),c("Title","Type","Level")] )
+```
+
+    ##                                                                                          Title
+    ## 809                                                                       plasma retionic acid
+    ## 890                                                                        Decrease, Fecundity
+    ## 39                                                               demethylation, PPARg promoter
+    ## 579                                                                   Increase, cilia movement
+    ## 197                                                              Reduction, testosterone level
+    ## 798                                                              Impaired inguinoscrotal phase
+    ## 357                                                                  Increased, valve movement
+    ## 619                                                               Activation, JAK/STAT pathway
+    ## 112                                                              Serotonin 1A Receptor Agonism
+    ## 450                                                              Induction, Microvesicular fat
+    ## 316                                                             Reduced, Prostaglandins, ovary
+    ## 785                                                               Occurrence, Cellular Seizure
+    ## 18                                                         Inhibition, Cyclooxygenase activity
+    ## 209                                              Reduction, Plasma vitellogenin concentrations
+    ## 144                                    Inhibition, NADH-ubiquinone oxidoreductase  (complex I)
+    ## 193                                                       Increased pro-inflammatory mediators
+    ## 748                                                                 Dysfunction, Mitochondria 
+    ## 326                                                            Impairment, Learning and memory
+    ## 172                                                                              BDNF, Reduced
+    ## 86                                                                    Inhibition, Deiodinase 3
+    ## 78                             Activation of specific nuclear receptors, PPAR-gamma activation
+    ## 297                                                                       Up Regulation, SCD-1
+    ## 57                                                   Increase, Cytotoxicity (epithelial cells)
+    ## 343                                                                      Reduced, Food storage
+    ## 633                                                          p21 (CDKN1A) expression, increase
+    ## 492                                                              Reduced, Swimming performance
+    ## 283                                                  Increased, Intracellular Calcium overload
+    ## 338                                                            Increased, Viral susceptibility
+    ## 137                                                                           Increase in RONS
+    ## 632                                                              Histone acetylation, increase
+    ## 125                                                       Mitochondrial Complex III inhibition
+    ## 743                                                                       Decrease, Glycolysis
+    ## 91                                                               Activation, Estrogen receptor
+    ## 508                                               Increased, secretion of local growth factors
+    ## 791                                                                         Increase, Necrosis
+    ## 420                                           Increase, Hyperplasia (tubular epithelial cells)
+    ## 95                                                                      Inactivation of PPARγ
+    ## 744                                                                           Decrease, OXPHOS
+    ## 97                                                              Histone deacetylase inhibition
+    ## 38                                                                      GR Agonist, Activation
+    ## 281                                                                     N/A, Neurodegeneration
+    ## 349                                                                         Reduced, feeding 1
+    ## 320                                                                        activation of CEBPA
+    ## 366                                                                      Decreased, locomotion
+    ## 332                                                            impaired, Hive thermoregulation
+    ## 509                                              Increased, proliferation of mesenchymal cells
+    ## 87                                                                         Inhibition, Pendrin
+    ## 797                                                                    Decrease, AR activation
+    ## 364                                                  Decrease, histaminergic neuron excitation
+    ## 724                                                                      Release of G Proteins
+    ## 385                                                Increase, Cytotoxicity (renal tubular cell)
+    ## 419                                       Increase, Hyperplasia (forestomach epithelial cells)
+    ## 440                                               Occurrence, Cystic dilatation (renal tubule)
+    ## 422                                Decrease, Incorporation of active iodide into iodotyrosines
+    ## 96                                                                   Activation, NADPH Oxidase
+    ## 190                                                                          Oxidative Stress 
+    ## 662                                                                       Increased, glutamate
+    ## 739                                                       Decrease, Chloroplast ATP production
+    ## 155                                                     Decrease, Abdominal muscle contraction
+    ## 74                                                                    Inhibition, Deiodinase 2
+    ## 146                                                                     Impaired, Proteostasis
+    ## 477                                                                  S-Glutathionylation, eNOS
+    ## 347                                                                    Reduced, swimming speed
+    ## 183                                                                        Increase, Mutations
+    ## 615                                    Increase, Oxidative Stress / Activation, PMK-1 P38 MAPK
+    ## 9                                                      Inhibition, Acetylcholinesterase (AchE)
+    ## 550                                                                    Increased, inflammation
+    ## 124                                                             Increase, Uncoupling of OXPHOS
+    ## 362                                                                         Decreased, anxiety
+    ## 556                                       Increased cellular proliferation and differentiation
+    ## 116                                               Increase, Uncoupling of photophosphorylation
+    ## 99                                                                    Increase, ROS production
+    ## 261                                                                     Accumulation, Collagen
+    ## 292          Decreased, PCK1 expression (control point for glycolysis/gluconeogenesis pathway)
+    ## 772                                                             Decreased Na/K ATPase activity
+    ## 561                                                                 Occurrence, renal ischemia
+    ## 461                                                   Increased, blood uric acid concentration
+    ## 703                                                                Increased, synaptic release
+    ## 100                                                                 CYP7B activity, inhibition
+    ## 437                                                               Decreased, Renal plasma flow
+    ## 497                                                        Induction, Somatic muscle paralysis
+    ## 628                                                                            Activation, JNK
+    ## 647                                                              Decreased, packaged serotonin
+    ## 294                                     Up Regulation, LDLR (low density lipoprotein receptor)
+    ## 765                                                                              Increase, ROS
+    ## 643                                                         Decreased, extracellular serotonin
+    ## 442                                       Occurrence, Cytoplasmic vacuolization (Renal tubule)
+    ## 655                                                                         Activation, 5-HT2A
+    ## 355                                                          Increased, muscular waves in foot
+    ## 305                                                                    Down Regulation, HMGCS2
+    ## 214                                                     Decrease, Mitochondrial ATP production
+    ## 167                                                    Reduction, Neuronal synaptic inhibition
+    ## 799                                                              Increase, DNA hypomethylation
+    ## 109                                                     Reduced, presynaptic neuron 2 activity
+    ## 446                                                                       Injury, Mitochondria
+    ## 614                                                                              ROS formation
+    ## 377                           Reduced, Maturation inducing steroid receptor signalling, oocyte
+    ## 40                                                Activation, Nicotinic acetylcholine receptor
+    ## 184                                                                 N/A, Inadequate DNA repair
+    ## 734                                                                 TGFbeta pathway activation
+    ## 333                                                    Accumulation, Damaged mitochondrial DNA
+    ## 714                                                                         Increased, seizure
+    ## 323                                                                           decreased reward
+    ## 482                                                                     Impaired, Vasodilation
+    ## 300                                                          Increased, Triglyceride formation
+    ## 380                               Upregulated, Spindle assembly checkpoint protein Mad2-oocyte
+    ## 10                    Binding, SH/SeH proteins involved in protection against oxidative stress
+    ## 435                                                         Decreased, Thyroxine (T4) in serum
+    ## 642                                                         Increased, extracellular serotonin
+    ## 494                                                   Reduced, Anterior swim bladder inflation
+    ## 564                                                         Increased, Reactive oxygen species
+    ## 418                   Increase, Regenerative cell proliferation (forestomach epithelial cells)
+    ## 82                                                       Inhibition, Cyclooxygenase 1 activity
+    ## 618                                                                                  Apoptosis
+    ## 291                                        Inhibition, Mitochondrial fatty acid beta-oxidation
+    ## 359                                                                 Increased, foot detachment
+    ## 325                                     decreased methylation of dopamine transporter promoter
+    ## 13                                                                             Activation, AhR
+    ## 445                                                            Disturbance, Lysosomal function
+    ## 67                                                                 Inhibition, Phospholipase A
+    ## 412                                                                  hyperpolarisation, neuron
+    ## 217                           Activation of specific nuclear receptors, Transcriptional change
+    ## 24                                                            Decreased, PPAR-alpha activation
+    ## 781                                                                    Proteasomal dysfunction
+    ## 154                                                Decrease, Excitatory postsynaptic potential
+    ## 842                                                              Reduced, Reproductive Success
+    ## 299                                                            Increased, De Novo FA synthesis
+    ## 354                                             Increased, Ataxia, paralysis, or hyperactivity
+    ## 361                                                               Increased, serotonin (5-HT) 
+    ## 322                                                                         decreased dopamine
+    ## 695                                                   Dopamine release in the brain, decreased
+    ## 491                                                  Reduced, Posterior swim bladder inflation
+    ## 585                                                            Decreased, sodium conductance 2
+    ## 2                                                                        Increase, EcR agonism
+    ## 72                                                                           Peptide Oxidation
+    ## 222                                                  Reduction, Prostaglandin E2 concentration
+    ## 439                                                                Increased, Serum creatinine
+    ## 667                                                         Activated, membrane depolarization
+    ## 274                                                                    Reduction, Angiogenesis
+    ## 600                                                                   Altered, Gene Expression
+    ## 800                                                                  Increase, Gene expression
+    ## 806                                                                Increase, DNA strand breaks
+    ## 168                             Generation, Amplified excitatory postsynaptic potential (EPSP)
+    ## 458                                                               Increase, Cell Proliferation
+    ## 219                                                                          Release, Cytokine
+    ## 698                                                                 Sexual behavior, decreased
+    ## 23                                                                             Activation, LXR
+    ## 213                                         Disruption, Mitochondrial electron transport chain
+    ## 507                                                                    Increased, adipogenesis
+    ## 766                                        Decrease in mitochondrial oxidative phosphorylation
+    ## 441                                           Occurrence, Cytoplasmic vacuolization (podocyte)
+    ## 104                                                  Decreased, serotonin transporter activity
+    ## 360                                                                      Increased, locomotion
+    ## 126                                                                          Blocking of IL-1R
+    ## 37                                                                                inflammation
+    ## 248                                                                            Activation, FAS
+    ## 674                                                                        Increase, Apoptosis
+    ## 478                                                                          Decrease, GTPCH-1
+    ## 75                                                                    Inhibition, Deiodinase 1
+    ## 414                                                                 Increased, Plasma tyrosine
+    ## 149                                                                  Increase, E75b expression
+    ## 449                                       Occurrence, Cytoplasmic vacuolization (kupffer cell)
+    ## 138                                                             Increase, Oxidative DNA damage
+    ## 824                                                                       Increased, Mortality
+    ## 659                                                                       Activate, calmodulin
+    ## 428                                                               Increased, HIF-1 heterodimer
+    ## 303                                                                          Inhibition, FoxA2
+    ## 637                                                                 Increased, Liver Steatosis
+    ## 50                                      Inhibition, Pyruvate dehydrogenase kinase (PDK) enzyme
+    ## 11                                                                          Activation, PPARα
+    ## 591                                              Increased, Proliferation (Endothelial cells) 
+    ## 417                                  Increase, Regenerative cell proliferation (corneal cells)
+    ## 32                                          Binding of agonist, Ionotropic glutamate receptors
+    ## 560                                    Decreased, Prostaglandin F2alpha concentration, plasma 
+    ## 254                                                             Decreased, HSD17B10 expression
+    ## 178                                                 Inhibition, Nuclear factor kappa B (NF-kB)
+    ## 882                                                                  Increased, Male offspring
+    ## 269                                                                     T4 in serum, Decreased
+    ## 147                                                                     N/A, Neuroinflammation
+    ## 444                                                                      Damage, Lipid bilayer
+    ## 794                                                                 Reduction, androstenedione
+    ## 308                                                                    Decreased, DHB4/HSD17B4
+    ## 306                                                                     Decreased, Ketogenesis
+    ## 182                                                                 Suppression, Immune system
+    ## 66                                                                     TH synthesis, Decreased
+    ## 189                                             Protection against oxidative stress, decreased
+    ## 365                                                                              N/A, sedation
+    ## 286                                                                   Hyperplasia, Leydig cell
+    ## 752                                                                          General Apoptosis
+    ## 740                                                            Decrease, Chlorophyll synthesis
+    ## 735                                                                Inhibition of lysyl oxidase
+    ## 145                                                           N/A, Mitochondrial dysfunction 1
+    ## 351                                             prolonged, Depolarization of neuronal membrane
+    ## 671                                                                  Activate, GABA-A receptor
+    ## 132                                                             Inhibition of Cyp17A1 activity
+    ## 56                              Inhibition, 4-hydroxyphenyl-pyruvate dioxygenase (HPPD) enzyme
+    ## 452                                     Occurrence, Cytoplasmic vacuolization (Bile duct cell)
+    ## 650                                                                         Inactivated, 5-HTR
+    ## 790                                                         Activation, hepatic stellate cells
+    ## 702                                                              Increased, packaged serotonin
+    ## 436                                                           Decreased, Glomerular filtration
+    ## 490                                                  Decreased, Triiodothyronine (T3) in serum
+    ## 150                                                                Increase, Ftz-f1 expression
+    ## 133                                                                  5α-reductase, inhibition
+    ## 656                                                                              Activate, PLC
+    ## 202                                                                     dimerization, AHR/ARNT
+    ## 363                                                                      Decreased, sheltering
+    ## 448                                           Occurrence, Ballooning degeneration (hepatocyte)
+    ## 386                       Increase, Regenerative cell proliferation (tubular epithelial cells)
+    ## 392                                         Altered expression of  hepatic CAR-dependent genes
+    ## 716                                                        Reduced, GABA-A receptor activation
+    ## 14                                                                  Agonism, Androgen receptor
+    ## 384             Increased, Accumulation of alpha2u microglobulin (proximal tubular epithelium)
+    ## 287                                                       Increase proliferation, Leydig cell 
+    ## 151                                                                  Decrease, Circulating ETH
+    ## 177                                                  Reduced, Presynaptic release of glutamate
+    ## 672                                                             Activate, presynaptic neuron 2
+    ## 657                                                            Increase, inositol triphosphate
+    ## 272                                                              Hippocampal anatomy, Altered 
+    ## 553                                                          Recruitment of inflammatory cells
+    ## 103                                                  Increased, serotonin transporter activity
+    ## 285                                                        Increase, Luteinizing hormone (LH) 
+    ## 704                                                                           Decreased, 5-HT3
+    ## 127                                                                    Inhibition, IKK complex
+    ## 413                                                   N/A, Ataxia, paralysis, or hyperactivity
+    ## 745                                                                Decrease, Leaf cell mitosis
+    ## 324                                          decreased DNA methylation of tyrosine hydroxylase
+    ## 4                                    reduction in ovarian granulosa cells, Aromatase (Cyp19a1)
+    ## 646                                                         Decreased, intracellular serotonin
+    ## 644                                                      Increased, intracellular sodium (Na+)
+    ## 257                                   modulation, Genes/proteins that regulate hepatocyte fate
+    ## 802                                                                 Reduction of L-Dopaquinone
+    ## 713                                                 Increased, hippocampal hyperdepolarization
+    ## 496                                               Increased, Inhibitory postsynaptic potential
+    ## 98                                                     Inhibition of fatty acid beta oxidation
+    ## 594                                                             Increased, Ductal Hyperplasia 
+    ## 175                                                                 Synaptogenesis, Decreased 
+    ## 220                                                                     Increase, Inflammation
+    ## 749                                                                  Oxidative Stress in Brain
+    ## 41                                                                  Inhibition, sodium channel
+    ## 8                                                                              Alkylation, DNA
+    ## 44                                   Inhibition, 5-hydroxytryptamine transporter (5-HTT; SERT)
+    ## 148                          Degeneration of dopaminergic neurons of the nigrostriatal pathway
+    ## 694                                  7α-hydroxypregnenolone synthesis in the brain, decreased
+    ## 288                                                                Thyroidal Iodide, Decreased
+    ## 122                                                                      Increase, SUR binding
+    ## 304                                                                     Down Regulation, CPT1A
+    ## 443                                                   Decreased, Renal ability to dilute urine
+    ## 400                                  Increase, Hypertrophy and proliferation (follicular cell)
+    ## 282                                                                     Overactivation, NMDARs
+    ## 328                                                                           Weakened, Colony
+    ## 381                                                      Increased, Chromosome misseggregation
+    ## 447                                         Occurrence, Cytoplasmic vacuolization (hepatocyte)
+    ## 429                                                        Decreased, Aromatase (Cyp19a1) mRNA
+    ## 557                                                  Increased extracellular matrix deposition
+    ## 250                                                                      Synthesis, De Novo FA
+    ## 136                                                                       Increase, DNA Damage
+    ## 60                                                        Increase, Cytotoxicity (hepatocytes)
+    ## 275                                                            Impairment, Endothelial network
+    ## 345                                          Desensitization, Nicotinic acetylcholine receptor
+    ## 455                                                                           Inhibition, UROD
+    ## 663                                                                   Activated, NMDA receptor
+    ## 156                                                               Increase, Incomplete ecdysis
+    ## 369                                                                 Reduced, Spawning behavior
+    ## 572                                                Increased, Triiodothyronine (T3) in tissues
+    ## 358                                                                 Depletion, energy reserves
+    ## 340                                                 Decreased, Glucose oxidase enzyme activity
+    ## 438                                                             Decreased, Sodium reabsorption
+    ## 701                                                         Increased, intracellular serotonin
+    ## 736                                                         Reduction of collagen crosslinking
+    ## 776                                                              Activation, Caspase 8 pathway
+    ## 394                                                                     Increase, Cytotoxicity
+    ## 803                                                                 Reduction in melanin level
+    ## 845                                                               impaired, Larval development
+    ## 319                     Decreased sperm quantity or quality in the adult, Decreased fertility 
+    ## 49                                                Activation, Constitutive androstane receptor
+    ## 660                                               Increase, myosin light chain phosphorylation
+    ## 173                                                                     N/A, Cell injury/death
+    ## 225                                                                                   N/A, Gap
+    ## 652                                                                 Decreased, neuroplasticity
+    ## 55                                                Activation, Glutamate-gated chloride channel
+    ## 907                                                                            Necrotic Tissue
+    ## 198                                                      Decrease, Translocator protein (TSPO)
+    ## 180                                                                     Decreased, Lymphocytes
+    ## 43                                                                  modulation, sodium channel
+    ## 715                                                                            Decreased, GABA
+    ## 589                                          Increased, ER binding to DNA (classical pathway) 
+    ## 330                                                         Abnormal, Roll change within caste
+    ## 256                                 Decreased, 3-hydroxyacyl-CoA dehydrogenase type-2 activity
+    ## 346                                                            Decreased, Sodium conductance 1
+    ## 372                                        Decreased, Prostaglandin F2alpha synthesis, ovary  
+    ## 16                                                                     Inhibition, Ca++ ATPase
+    ## 170                                                                         Inhibition, NMDARs
+    ## 763                                                                              PSII activity
+    ## 376                                               Reduced, Maturation inducing steroid, plasma
+    ## 253                                                                   Accumulation, Fatty acid
+    ## 244                                                                        Up Regulation, CD36
+    ## 484                                                                Decrease, AKT/eNOS activity
+    ## 215                                                                    Decreased, Nitric Oxide
+    ## 63                                                             Inhibition, Prolyl hydroxylases
+    ## 697                                                            Decreased, Reproductive Success
+    ## 416                                                     Increase, Inflammation (corneal cells)
+    ## 101                                                                       Activation of Cyp2E1
+    ## 68                                                                  Decrease, Intracellular pH
+    ## 185                                                    Accumulation, Acetylcholine in synapses
+    ## 415                                                     Increase, Cytotoxicity (corneal cells)
+    ## 805                                                         Reduction fo Pigmentation pattern 
+    ## 760                                                                Increase, Premature molting
+    ## 119                                                                          CYP2E1 Activation
+    ## 727                                                     Inhibition of neurotransmitter release
+    ## 7                                                          Activation, Glucocorticoid Receptor
+    ## 601                                                                Altered, Protein Production
+    ## 500                                                     Induction, pharyngeal muscle paralysis
+    ## 613                                                                                        EMT
+    ## 383                                                               Increased, cardiac arrthymia
+    ## 603                                                     Increased, Second Messenger Production
+    ## 559                                                Decreased, Triiodothyronine (T3) in tissues
+    ## 742                                                                   Decrease, Photosynthesis
+    ## 717                                                          Decreased, intracellular chloride
+    ## 587                                            Increase, Cell Proliferation (Epithelial Cells)
+    ## 6                                                        Binding of antagonist, NMDA receptors
+    ## 605                                                         Induction, Male reproductive tract
+    ## 634                                                                      cell cycle, disrupted
+    ## 117                                 Inhibition, mitochondrial DNA polymerase gamma (Pol gamma)
+    ## 174                                                             Aberrant, Dendritic morphology
+    ## 480                                                                           Uncoupling, eNOS
+    ## 35                                                                         Activation, PXR/SXR
+    ## 459                                               Increase, Respiratory or Squamous Metaplasia
+    ## 846                                                            Decrease, Number of worker bees
+    ## 142                                                                              TR Antagnoism
+    ## 350                                                                       Increased, predation
+    ## 617                                                               Increased, DNA Damage-Repair
+    ## 181                                                          Induction, IKB inhibitory protein
+    ## 653                                                                        Increase, cortisone
+    ## 327                                                   Abnormal, Foraging activity and behavior
+    ## 696                                                              Locomotor activity, decreased
+    ## 610                                                                   Mitochondrial impairment
+    ## 762                                                     Increase, Cell membrane depolarization
+    ## 467                                                                       Disruption, Lysosome
+    ## 549                                            persistent, cytotoxicity (pleura or peritoneum)
+    ## 411                                                            Increased, Chloride conductance
+    ## 676                                                               Increase, Follicular atresia
+    ## 298                                                                         Activation, SREBF1
+    ## 493                                                            Reduced, Young of year survival
+    ## 395                                       Increased, Induction of pyruvate dehydrogenase (PDH)
+    ## 47                                               Increased, Binding of chemicals to 2u (serum)
+    ## 17                                                  Inhibition, Bile Salt Export Pump (ABCB11)
+    ## 206                                       Reduction, Gonadotropins, circulating concentrations
+    ## 1                             Binding of inhibitor, NADH-ubiquinone oxidoreductase (complex I)
+    ## 468                                                           Leukocyte recruitment/activation
+    ## 29                                                                 Thyroperoxidase, Inhibition
+    ## 186                                          Increased, Atrioventricular block and bradycardia
+    ## 188                                             Induction, Ataxia, paralysis, or hyperactivity
+    ## 645                                                    Increased, intracellular chloride (Cl-)
+    ## 58                                           Increase, Cytotoxicity (tubular epithelial cells)
+    ## 25                                                                         Alkylation, Protein
+    ## 164                                          Reduction, Plasma 17beta-estradiol concentrations
+    ## 273                                                            Hippocampal Physiology, Altered
+    ## 792                                                              Increase,Oxidative DNA damage
+    ## 782                                                                   Airway epithelial injury
+    ## 700                                                                Regenerative Proliferation 
+    ## 187                                                     Increased, Respiratory distress/arrest
+    ## 259 Increase, Clonal Expansion / Cell Proliferatin to form Pre-Neoplastic Altered Hepatic Foci
+    ## 401                                                   Increase, Hyperplasia (follicular cells)
+    ## 777                                          Activation, Tissue resident cells (Kuppfer cells)
+    ## 245                                                                        Increase, FA Influx
+    ## 118                                                  Binding of substrate, endocytic receptor 
+    ## 379                                                  Increased, cyclic adenosine monophosphate
+    ## 387                                                Increase, Hyperplasia (renal tubular cells)
+    ## 15                                                                       Inhibition, Aromatase
+    ## 153                                                        Decrease, Ecdysis motoneuron bursts
+    ## 774                                                                 Impaired T cell activation
+    ## 255                                         Decreased, Mitochondrial fatty acid beta-oxidation
+    ## 337                                                             Increased, Appetite and hunger
+    ## 889                                                                          Increase, seizure
+    ## 608                                                                   increased mantel display
+    ## 725                                                                   Opening of GIRK channels
+    ## 609                                                                        Induced parturition
+    ## 593                                                           Increased, Non-genomic signaling
+    ## 750                                                                         Lipid Peroxidation
+    ## 36                                                                            Activation, NRF2
+    ## 430                                                       Increased, HIF-1 alpha transcription
+    ## 801                                               Decrease,  Transgenerational DNA methylation
+    ## 249                                                                          Activation, SCD-1
+    ## 454                                                                Oxidation, Uroporphyrinogen
+    ## 796                                                                        Decrease, DHT level
+    ## 629                                                                           Activation, FOXO
+    ## 733                                                             Differentiation of fibroblasts
+    ## 664                                                    Activated, voltage-gated sodium channel
+    ## 611                                                             Activation of TGF-β signaling
+    ## 604                                                                 Induction, Doublesex1 gene
+    ## 675                                                                        Decrease, Oogenesis
+    ## 246                                                                         Activation, ChREBP
+    ## 462                                                Occurrence, renal proximal tubular necrosis
+    ## 77                                               Activation, Glutamate-gated chloride channels
+    ## 804                                                              Reduction of melanosome level
+    ## 191                                                                   Glutamate dyshomeostasis
+    ## 382                                                                  Altered, Action Potential
+    ## 212                                                             Increase, Ca++ (intracellular)
+    ## 20                                                               Antagonism, Estrogen receptor
+    ## 356                                                         Increased, water retention in foot
+    ## 770                                                                Reduced collagen production
+    ## 166                           Reduction, Ionotropic GABA receptor chloride channel conductance
+    ## 463                                                   Increased, blood potassium concentration
+    ## 495                                                                           Reduced, Hearing
+    ## 558                                                       Decreased, Thyroxine (T4) in tissues
+    ## 208                                                 Reduction, Vitellogenin synthesis in liver
+    ## 402                                                Increase, Thyroid-stimulating hormone (TSH)
+    ## 631                                                                    Defect of Embryogenesis
+    ## 849                                                                        Increase, predation
+    ## 373                                      Reduced, Prostaglandin E2 concentration, hypothalamus
+    ## 52                                                       Decreased, Uptake of inorganic iodide
+    ## 368                                          Reduced, Prostaglandin F2alpha synthesis, ovary  
+    ## 115                                                                      Thiol protein adducts
+    ## 195                                           Reduction, Cholesterol transport in mitochondria
+    ## 661                                               Increase, vascular smooth muscle contraction
+    ## 342                                                   Reduced, Antiseptic incorporated in food
+    ## 139                                                                Retinaldehyde dehydrogenase
+    ## 5                                          Binding at picrotoxin site, iGABAR chloride channel
+    ## 789                                                           Accumulation, misfolded proteins
+    ## 33                                                          Inhibition, Na+/I- symporter (NIS)
+    ## 196                                          Reduction, Testosterone synthesis in Leydig cells
+    ## 751                                                                 Unfolded Prortein Response
+    ## 353                                                         Overactivation, muscle contraction
+    ## 498                                                    Increased, Neuronal synaptic inhibition
+    ## 76                                       Activation, ionotropic GABA Receptor chloride channel
+    ## 108                                                            Activated, presynaptic neuron 1
+    ## 223                                            Reduction, Ca and HCO3 transport to shell gland
+    ## 630                                                                    Inhibition, Wnt pathway
+    ## 746                                                                 Decrease, Leaf development
+    ## 83                                                                                Unknown, MIE
+    ## 485                                                      reduced dimerization, ARNT/HIF1-alpha
+    ## 737                                                                       Weak collagen matrix
+    ## 588                                                    Decreased, Apoptosis (Epithelial Cells)
+    ## 30                                                                          Inhibition, VegfR2
+    ## 620                                                               Activation, TGF-beta pathway
+    ## 917                                                                        Decline, Population
+    ## 578                                                            Increased, Reproductive Success
+    ## 636                                                             Increase, cytosolic fatty acid
+    ## 451                                                                    Formation, Mallory body
+    ## 111                                                                 Mu Opioid Receptor Agonism
+    ## 577                                                                           induced spawning
+    ## 315                                                                        Decrease, Ovulation
+    ## 669                                                                        Increased, RDX dose
+    ## 352                                                 Overactivation, Neuronotransmitter release
+    ## 204                                               Altered, Cardiovascular development/function
+    ## 247                                                                       Activation, SREBP-1c
+    ## 210            Reduction, Vitellogenin accumulation into oocytes and oocyte growth/development
+    ## 783                                                          Fibroproliferative airway lesions
+    ## 276                                                                    Insufficiency, Vascular
+    ## 808                                                                              retinoic acid
+    ## 141                                                                    Increase, SAM depletion
+    ## 616                                                                          Activation, HIF-1
+    ## 635                                                                     spermatocyte depletion
+    ## 171                                                                  Decreased, Calcium influx
+    ## 165                           Reduction, 17beta-estradiol synthesis by ovarian granulosa cells
+    ## 203                                                                 Increase, COX-2 expression
+    ## 649                                                                           Increased, 5-HT3
+    ## 592                                                   Increased, Migration (Endothelial Cells)
+    ## 258                                       Increase, Mitogenic cell proliferation (hepatocytes)
+    ## 344                                                         Abnormal, Role change within caste
+    ## 317                                             Repressed expression of steroidogenic enzymes 
+    ## 307                                                                            Activation, SHP
+    ## 85                                                   Inhibition, Iodotyrosine deiodinase (IYD)
+    ## 252                                                                     Damaging, Mitochondria
+    ## 179                                                        Suppression, Inflammatory cytokines
+    ## 466                                                                Increased, Oxidative Stress
+    ## 129                                         Interaction of α-diketones with arginine residues
+    ## 551                                                Increased, Cell Proliferation (mesothelium)
+    ## 339                                                                      impaired, Development
+    ## 271                                                      Hippocampal gene expression, Altered 
+    ## 224                                                              Reduction, Eggshell thickness
+    ## 367                                      Reduced, Prostaglandin F2alpha concentration, plasma 
+    ## 795                                                               Decrease, testosterone level
+    ## 499                                                                        Inhibition, Feeding
+    ## 374                                      Reduced, Gonadotropin releasing hormone, hypothalamus
+    ## 69                                              Inhibition, organic anion transporter 1 (OAT1)
+    ## 726                                                                  Inhibition of Ca Channels
+    ## 251                                                                 Accumulation, Triglyceride
+    ## 403                                                    Decrease, Serum thyroid hormone (T4/T3)
+    ## 651                                                                    Reduce expression, BDNF
+    ## 284                                        Decreased, Neuronal network function in adult brain
+    ## 321                                                                     increased adipogenesis
+    ## 314                                                                           Activation, AKT2
+    ## 169                                                Occurrence, A paroxysmal depolarizing shift
+    ## 421                                    Increase, Regenerative cell proliferation (hepatocytes)
+    ## 270                                                           T4 in neuronal tissue, Decreased
+    ## 34                                        Suppression, Constitutive androstane receptor, NR1l3
+    ## 293                                                                       Increased, FA Influx
+    ## 102                                                Increased, glucocorticoid receptor activity
+    ## 318                                               Increased apoptosis, decreased Leydig Cells 
+    ## 673                                                                             Increase, GABA
+    ## 370                                                 Reduced, Ability to attract spawning mates
+    ## 465                                                             Occurrence, cardiac arrhythmia
+    ## 456                                               Accumulation, Highly carboxylated porphyrins
+    ## 134                                                                  Increase, DNMT inhibition
+    ## 348                                                                               N/A, hypoxia
+    ## 194                                    Decrease, Steroidogenic acute regulatory protein (STAR)
+    ## 114                                                                        TGFbeta1 activation
+    ## 552                                                        Increased proinflammatory mediators
+    ## 336                                 Increase, Energetic demands and therefore metabolic stress
+    ## 486                                                                   reduced production, VEGF
+    ## 481                                                                    Depletion, Nitric Oxide
+    ## 771                                                                    Altered differentiation
+    ## 59                                                               Activation, Androgen receptor
+    ## 741                                                           Decrease, Light harvest capacity
+    ## 176                                                       Neuronal network function, Decreased
+    ## 638                                                                increased, oncotic necrosis
+    ## 309                                                                      Activation, LXR alpha
+    ## 121                                                                   Increase, CHS inhibition
+    ## 393                                                 Increase, Preneoplastic foci (hepatocytes)
+    ## 396                                                             Increase, Oxidative metabolism
+    ## 554                                              Loss of alveolar capillary membrane integrity
+    ## 295                                                                      Increased, LDL uptake
+    ## 590                               Increased, ER binding to T.F. to DNA (non-classical pathway)
+    ## 341                                                    Decreased, Hydrogen peroxide production
+    ## 192                                                            Tissue resident cell activation
+    ## 612                                                                        Collagen Deposition
+    ## 648                                                                Decreased, synaptic release
+    ## 602                                                                        Increased, Motility
+    ## 759                                                       Decrease, Cuticular chitin synthesis
+    ## 738                                                                     Notochord malformation
+    ## 807                                                                Optical elements of the eye
+    ## 131                                                       Inhibition of N-linked glycosylation
+    ## 123                                                                        D1 protein blockage
+    ## 64                                                                         modulation, Unknown
+    ## 152                                                                 Decrease, Circulating CCAP
+    ## 464                                                       Occurrence, tophi (urate) deposition
+    ## 786                                                              Occurrence, Epileptic seizure
+    ## 761                                     Increase, Opening of voltage-dependent calcium channel
+    ## 460                                                      Increase, Mutations in Critical Genes
+    ## 301                                                                         Up Regulation, FAS
+    ## 135                                                                                tyrosinase 
+    ## 562                                                      Increased, Deformed Wing Virus levels
+    ## 810                                                                          Visual impairment
+    ## 378                                 Reduced, Meiotic prophase I/metaphase I transition, oocyte
+    ## 453                                                                   Induction, CYP1A2/CYP1A5
+    ## 563                                Increased, Energetic demands and therefore metabolic stress
+    ## 302                                            Up Regulation, Acetyl-CoA carboxylase-1 (ACC-1)
+    ## 81                                                          Interaction with the cell membrane
+    ## 555                                                                    Activation of Th2 cells
+    ## 654                                                                              Reduced, BDNF
+    ## 218                                                  Bile accumulation, Pathological condition
+    ## 769                                                        Reduced neural crest cell migration
+    ## 658                                                            Increase, intracellular calcium
+    ## 334                                                                         Accelerated, Aging
+    ## 483                                                              Increase, Vascular Resistance
+    ## 211                                               Reduction, Cumulative fecundity and spawning
+    ## 221                                                        Production, Reactive oxygen species
+    ## 289                                                          GABAergic interneurons, Decreased
+    ## 335                                           Overwhelmed, Mitochondrial DNA repair mechanisms
+    ## 371                                                                 Reduced, Pheromone release
+    ## 793                                                                            Reduction, DHEA
+    ## 576                                                               Increased, oocyte maturation
+    ## 260                                                                 Activation, Stellate cells
+    ## 699                                                                         Hepatocytotoxicity
+    ## 88                                                                    Inhibition, Dual oxidase
+    ## 92                                                       Activation, Juvenile hormone receptor
+    ## 775                                                                     Impaired Ab production
+    ## 290                                                                Suppression, VLDL secretion
+    ## 479                                                              Decrease, Tetrahydrobiopterin
+    ## 329                                     Altered, Ca2+-calmodulin activated signal transduction
+    ## 747                                                                          Depletion, mtDNA 
+    ## 784                                             Activation, Muscarinic Acetylcholine Receptors
+    ## 42                            Inhibition, Ether-a-go-go (ERG) voltage-gated potassium channel 
+    ## 207                                   Reduction, Testosterone synthesis by ovarian theca cells
+    ## 46                                                                      impaired, ion channels
+    ## 375                                                 Reduced, Luteinizing hormone (LH), plasma 
+    ## 331                                                                        Reduced, Brood care
+    ## 773                                             Decreased proximal tubular vectorial transport
+    ## 457                                         Increase, Tissue Degeneration, Necrosis & Atrophy 
+    ## 94                                                                      Decompartmentalization
+    ## 767                                    Increased reactive oxygen species (in the mitochondria)
+    ## 45                                                         Antagonism, Histamine Receptor (H2)
+    ## 70                                                                                 endocytosis
+    ## 826                                                            Decrease, Population trajectory
+    ## 916                                                               Malformation, cryptorchidism
+    ## 861                                                                  Formation, Liver fibrosis
+    ## 510                                                                   Increased, IGF-1 (mouse)
+    ## 157                                                                        Increase, Mortality
+    ## 851                                              Increase, Adenomas/carcinomas (renal tubular)
+    ## 881                                                                         N/A, Breast Cancer
+    ## 512                                                                     Increased, liposarcoma
+    ## 857                                           Increase, Papillomas/carcinomas (squamous cells)
+    ## 834                                                                        N/A, Liver fibrosis
+    ## 860                                                                Occurrence, Kidney toxicity
+    ## 513                                                                  Increased, hemagiosarcoma
+    ## 898                                                                        Increased, epilepsy
+    ## 764                                                                                     Growth
+    ## 843                                                                                    obesity
+    ## 848                                                                          Reduced, survival
+    ## 900                                                                                  Analgesia
+    ## 828                                                                     Cholestasis, Pathology
+    ## 586                                                                    Decreased, GABA release
+    ## 640                                                              Decreased, extracellular Na+ 
+    ## 892                                                           Decreased, Population trajectory
+    ## 599                                                                    Increased, Angiogenesis
+    ## 821                                                                        impaired, Fertility
+    ## 905                                                                          Neurodegeneration
+    ## 915                                                                               Liver Injury
+    ## 823                                                 Increase, Heritable mutations in offspring
+    ## 819                                                                Parkinsonian motor deficits
+    ## 296                                                                      Up Regulation, CYP1A1
+    ## 844                                                                      Death/Failure, Colony
+    ## 863                                                     Increase, Site of Contact Nasal Tumors
+    ## 876                                                                         Pulmonary fibrosis
+    ## 877                                                           Altered, Amphibian metamorphosis
+    ## 894                                                                      Increased, depression
+    ## 216                                                    Decreased, Long-term potentiation (LTP)
+    ## 885                                                                       Reproductive failure
+    ## 838                                                             Cognitive Function, Decreased 
+    ## 850                                                                        Decreased, survival
+    ## 668                                                          Inactive, membrane depolarization
+    ## 893                                                                               Liver Cancer
+    ## 833                                             Increase, Adenomas/carcinomas (hepatocellular)
+    ## 854                                            Increase, Adenomas/carcinomas (follicular cell)
+    ## 778                                             Increase, proinflammatory mediators (TNFalpha)
+    ## 901                                                                   Anti-depressant Activity
+    ## 903                                                                          Growth, reduction
+    ## 908                          Smaller and morphologically distorted facial cartilage structures
+    ## 841                                                                  Accumulation, Liver lipid
+    ## 896                                                                     Increase, hypertension
+    ## 641                                                    Decreased, extracellular chloride (Cl-)
+    ## 904                                                                Increase, Growth inhibition
+    ## 879                                                                      Increased, Population
+    ## 205                                                       Increase, Early Life Stage Mortality
+    ## 913                                                                   Bronchiolitis obliterans
+    ## 839                                                           Increased, Developmental Defects
+    ## 887                                                                        testicular toxicity
+    ## 310                                                                        Inhibition, SREBP1c
+    ## 875                                                                   Increased, mesotheliomas
+    ## 829                                                                  N/A, Reproductive failure
+    ## 511                                                                   Increased, Firbrosarcoma
+    ## 862                                                                               Uroporphyria
+    ## 847                                                                     Increased, amputations
+    ## 864                                                                           Increase, Cancer
+    ## 909                                                                        Neural tube defects
+    ## 888                                                                            steatohepatitis
+    ## 884                                                                              Lung fibrosis
+    ## 596                                                                        Increased, Invasion
+    ## 827                                                                Increased, Oxidative damage
+    ## 895                                                                       Increased, agitation
+    ## 866                                                                               Hypertension
+    ## 911                                            Increase, Increased susceptibility to infection
+    ## 910                                                          Chemical induced Fanconi syndrome
+    ##     Type      Level
+    ## 809   KE     Tissue
+    ## 890   AO Individual
+    ## 39   MIE  Molecular
+    ## 579   KE     Tissue
+    ## 197   KE     Tissue
+    ## 798   KE      Organ
+    ## 357   KE     Tissue
+    ## 619   KE   Cellular
+    ## 112  MIE  Molecular
+    ## 450   KE     Tissue
+    ## 316   KE      Organ
+    ## 785   KE   Cellular
+    ## 18   MIE  Molecular
+    ## 209   KE      Organ
+    ## 144   KE   Cellular
+    ## 193   KE     Tissue
+    ## 748   KE   Cellular
+    ## 326   KE Individual
+    ## 172   KE  Molecular
+    ## 86   MIE  Molecular
+    ## 78   MIE  Molecular
+    ## 297   KE  Molecular
+    ## 57   MIE   Cellular
+    ## 343   KE Population
+    ## 633   KE   Cellular
+    ## 492   KE Individual
+    ## 283   KE   Cellular
+    ## 338   KE Individual
+    ## 137  MIE  Molecular
+    ## 632   KE   Cellular
+    ## 125  MIE  Molecular
+    ## 743   KE   Cellular
+    ## 91   MIE  Molecular
+    ## 508   KE   Cellular
+    ## 791   KE     Tissue
+    ## 420   KE   Cellular
+    ## 95   MIE  Molecular
+    ## 744   KE   Cellular
+    ## 97   MIE  Molecular
+    ## 38   MIE  Molecular
+    ## 281   KE     Tissue
+    ## 349   KE Individual
+    ## 320   KE  Molecular
+    ## 366   KE Individual
+    ## 332   KE Population
+    ## 509   KE   Cellular
+    ## 87   MIE  Molecular
+    ## 797   KE   Cellular
+    ## 364   KE   Cellular
+    ## 724   KE   Cellular
+    ## 385   KE   Cellular
+    ## 419   KE   Cellular
+    ## 440   KE      Organ
+    ## 422   KE   Cellular
+    ## 96   MIE  Molecular
+    ## 190   KE  Molecular
+    ## 662   KE  Molecular
+    ## 739   KE   Cellular
+    ## 155   KE     Tissue
+    ## 74   MIE  Molecular
+    ## 146   KE   Cellular
+    ## 477   KE  Molecular
+    ## 347   KE Individual
+    ## 183   KE  Molecular
+    ## 615   KE   Cellular
+    ## 9    MIE   Cellular
+    ## 550   KE   Cellular
+    ## 124  MIE   Cellular
+    ## 362   KE Individual
+    ## 556   KE     Tissue
+    ## 116  MIE   Cellular
+    ## 99   MIE  Molecular
+    ## 261   KE     Tissue
+    ## 292   KE   Cellular
+    ## 772   KE   Cellular
+    ## 561   KE     Tissue
+    ## 461   KE     Tissue
+    ## 703   KE   Cellular
+    ## 100  MIE  Molecular
+    ## 437   KE     Tissue
+    ## 497   KE     Tissue
+    ## 628   KE   Cellular
+    ## 647   KE  Molecular
+    ## 294   KE  Molecular
+    ## 765   KE  Molecular
+    ## 643   KE  Molecular
+    ## 442   KE      Organ
+    ## 655   KE  Molecular
+    ## 355   KE      Organ
+    ## 305   KE  Molecular
+    ## 214   KE   Cellular
+    ## 167   KE   Cellular
+    ## 799   KE  Molecular
+    ## 109  MIE   Cellular
+    ## 446   KE   Cellular
+    ## 614   KE  Molecular
+    ## 377   KE     Tissue
+    ## 40   MIE  Molecular
+    ## 184   KE   Cellular
+    ## 734   KE  Molecular
+    ## 333   KE   Cellular
+    ## 714   KE Individual
+    ## 323   KE Individual
+    ## 482   KE      Organ
+    ## 300   KE   Cellular
+    ## 380   KE  Molecular
+    ## 10   MIE  Molecular
+    ## 435   KE     Tissue
+    ## 642   KE  Molecular
+    ## 494   KE      Organ
+    ## 564   KE   Cellular
+    ## 418   KE   Cellular
+    ## 82   MIE  Molecular
+    ## 618   KE   Cellular
+    ## 291   KE  Molecular
+    ## 359   KE Individual
+    ## 325   KE   Cellular
+    ## 13   MIE  Molecular
+    ## 445   KE   Cellular
+    ## 67   MIE  Molecular
+    ## 412   KE   Cellular
+    ## 217   KE   Cellular
+    ## 24   MIE  Molecular
+    ## 781   KE  Molecular
+    ## 154   KE     Tissue
+    ## 842   AO Individual
+    ## 299   KE   Cellular
+    ## 354   KE      Organ
+    ## 361   KE   Cellular
+    ## 322   KE  Molecular
+    ## 695   KE     Tissue
+    ## 491   KE      Organ
+    ## 585   KE   Cellular
+    ## 2    MIE  Molecular
+    ## 72   MIE  Molecular
+    ## 222   KE     Tissue
+    ## 439   KE      Organ
+    ## 667   KE   Cellular
+    ## 274   KE  Molecular
+    ## 600   KE  Molecular
+    ## 800   KE  Molecular
+    ## 806   KE  Molecular
+    ## 168   KE   Cellular
+    ## 458   KE   Cellular
+    ## 219   KE   Cellular
+    ## 698   KE Individual
+    ## 23   MIE  Molecular
+    ## 213   KE   Cellular
+    ## 507   KE   Cellular
+    ## 766   KE   Cellular
+    ## 441   KE      Organ
+    ## 104  MIE  Molecular
+    ## 360   KE Individual
+    ## 126  MIE  Molecular
+    ## 37   MIE      Organ
+    ## 248   KE  Molecular
+    ## 674   KE   Cellular
+    ## 478   KE   Cellular
+    ## 75   MIE  Molecular
+    ## 414   KE     Tissue
+    ## 149   KE  Molecular
+    ## 449   KE   Cellular
+    ## 138  MIE  Molecular
+    ## 824   AO Population
+    ## 659   KE  Molecular
+    ## 428   KE   Cellular
+    ## 303   KE  Molecular
+    ## 637   KE      Organ
+    ## 50   MIE   Cellular
+    ## 11   MIE  Molecular
+    ## 591   KE   Cellular
+    ## 417   KE   Cellular
+    ## 32   MIE  Molecular
+    ## 560   KE     Tissue
+    ## 254   KE   Cellular
+    ## 178   KE  Molecular
+    ## 882   AO Population
+    ## 269   KE     Tissue
+    ## 147   KE     Tissue
+    ## 444   KE   Cellular
+    ## 794   KE   Cellular
+    ## 308   KE  Molecular
+    ## 306   KE   Cellular
+    ## 182   KE Individual
+    ## 66   MIE   Cellular
+    ## 189   KE   Cellular
+    ## 365   KE Individual
+    ## 286   KE   Cellular
+    ## 752   KE   Cellular
+    ## 740   KE   Cellular
+    ## 735   KE   Cellular
+    ## 145   KE   Cellular
+    ## 351   KE   Cellular
+    ## 671   KE  Molecular
+    ## 132  MIE  Molecular
+    ## 56   MIE  Molecular
+    ## 452   KE   Cellular
+    ## 650   KE  Molecular
+    ## 790   KE   Cellular
+    ## 702   KE   Cellular
+    ## 436   KE     Tissue
+    ## 490   KE     Tissue
+    ## 150   KE  Molecular
+    ## 133  MIE  Molecular
+    ## 656   KE  Molecular
+    ## 202   KE  Molecular
+    ## 363   KE Individual
+    ## 448   KE   Cellular
+    ## 386   KE   Cellular
+    ## 392   KE   Cellular
+    ## 716   KE  Molecular
+    ## 14   MIE  Molecular
+    ## 384   KE     Tissue
+    ## 287   KE   Cellular
+    ## 151   KE     Tissue
+    ## 177   KE  Molecular
+    ## 672   KE  Molecular
+    ## 657   KE  Molecular
+    ## 272   KE     Tissue
+    ## 553   KE   Cellular
+    ## 103  MIE   Cellular
+    ## 285   KE   Cellular
+    ## 704   KE     Tissue
+    ## 127  MIE  Molecular
+    ## 413   KE      Organ
+    ## 745   KE     Tissue
+    ## 324   KE   Cellular
+    ## 4    MIE   Cellular
+    ## 646   KE  Molecular
+    ## 644   KE  Molecular
+    ## 257   KE   Cellular
+    ## 802   KE   Cellular
+    ## 713   KE  Molecular
+    ## 496   KE   Cellular
+    ## 98   MIE  Molecular
+    ## 594   KE     Tissue
+    ## 175   KE   Cellular
+    ## 220   KE   Cellular
+    ## 749   KE  Molecular
+    ## 41   MIE  Molecular
+    ## 8    MIE  Molecular
+    ## 44   MIE  Molecular
+    ## 148   KE      Organ
+    ## 694   KE   Cellular
+    ## 288   KE   Cellular
+    ## 122  MIE  Molecular
+    ## 304   KE  Molecular
+    ## 443   KE      Organ
+    ## 400   KE   Cellular
+    ## 282   KE  Molecular
+    ## 328   KE Population
+    ## 381   KE   Cellular
+    ## 447   KE   Cellular
+    ## 429   KE   Cellular
+    ## 557   KE     Tissue
+    ## 250   KE   Cellular
+    ## 136  MIE  Molecular
+    ## 60   MIE   Cellular
+    ## 275   KE   Cellular
+    ## 345   KE  Molecular
+    ## 455   KE  Molecular
+    ## 663   KE  Molecular
+    ## 156   KE Individual
+    ## 369   KE Individual
+    ## 572   KE     Tissue
+    ## 358   KE Individual
+    ## 340   KE  Molecular
+    ## 438   KE      Organ
+    ## 701   KE   Cellular
+    ## 736   KE     Tissue
+    ## 776   KE  Molecular
+    ## 394   KE   Cellular
+    ## 803   KE   Cellular
+    ## 845   AO Population
+    ## 319   KE Individual
+    ## 49   MIE  Molecular
+    ## 660   KE  Molecular
+    ## 173   KE   Cellular
+    ## 225   KE     Tissue
+    ## 652   KE  Molecular
+    ## 55   MIE  Molecular
+    ## 907   AO     Tissue
+    ## 198   KE   Cellular
+    ## 180   KE Individual
+    ## 43   MIE  Molecular
+    ## 715   KE   Cellular
+    ## 589   KE  Molecular
+    ## 330   KE Population
+    ## 256   KE   Cellular
+    ## 346   KE   Cellular
+    ## 372   KE      Organ
+    ## 16   MIE  Molecular
+    ## 170   KE  Molecular
+    ## 763   KE  Molecular
+    ## 376   KE     Tissue
+    ## 253   KE      Organ
+    ## 244   KE  Molecular
+    ## 484   KE   Cellular
+    ## 215   KE   Cellular
+    ## 63   MIE   Cellular
+    ## 697   KE Individual
+    ## 416   KE   Cellular
+    ## 101  MIE  Molecular
+    ## 68   MIE   Cellular
+    ## 185   KE   Cellular
+    ## 415   KE   Cellular
+    ## 805   KE Individual
+    ## 760   KE Individual
+    ## 119  MIE  Molecular
+    ## 727   KE   Cellular
+    ## 7    MIE  Molecular
+    ## 601   KE   Cellular
+    ## 500   KE     Tissue
+    ## 613   KE   Cellular
+    ## 383   KE      Organ
+    ## 603   KE   Cellular
+    ## 559   KE     Tissue
+    ## 742   KE   Cellular
+    ## 717   KE   Cellular
+    ## 587   KE   Cellular
+    ## 6    MIE  Molecular
+    ## 605   KE      Organ
+    ## 634   KE   Cellular
+    ## 117  MIE  Molecular
+    ## 174   KE   Cellular
+    ## 480   KE   Cellular
+    ## 35   MIE  Molecular
+    ## 459   KE     Tissue
+    ## 846   AO Population
+    ## 142  MIE  Molecular
+    ## 350   KE Population
+    ## 617   KE   Cellular
+    ## 181   KE   Cellular
+    ## 653   KE  Molecular
+    ## 327   KE Individual
+    ## 696   KE Individual
+    ## 610   KE  Molecular
+    ## 762   KE   Cellular
+    ## 467   KE   Cellular
+    ## 549   KE   Cellular
+    ## 411   KE   Cellular
+    ## 676   KE     Tissue
+    ## 298   KE  Molecular
+    ## 493   KE Individual
+    ## 395   KE  Molecular
+    ## 47   MIE  Molecular
+    ## 17   MIE  Molecular
+    ## 206   KE      Organ
+    ## 1    MIE  Molecular
+    ## 468   KE   Cellular
+    ## 29   MIE  Molecular
+    ## 186   KE      Organ
+    ## 188   KE      Organ
+    ## 645   KE  Molecular
+    ## 58   MIE   Cellular
+    ## 25   MIE  Molecular
+    ## 164   KE      Organ
+    ## 273   KE     Tissue
+    ## 792   KE  Molecular
+    ## 782   KE   Cellular
+    ## 700   KE   Cellular
+    ## 187   KE      Organ
+    ## 259   KE   Cellular
+    ## 401   KE   Cellular
+    ## 777   KE   Cellular
+    ## 245   KE   Cellular
+    ## 118  MIE  Molecular
+    ## 379   KE     Tissue
+    ## 387   KE   Cellular
+    ## 15   MIE  Molecular
+    ## 153   KE     Tissue
+    ## 774   KE   Cellular
+    ## 255   KE  Molecular
+    ## 337   KE Individual
+    ## 889   AO Individual
+    ## 608   KE      Organ
+    ## 725   KE   Cellular
+    ## 609   KE Individual
+    ## 593   KE   Cellular
+    ## 750   KE  Molecular
+    ## 36   MIE  Molecular
+    ## 430   KE   Cellular
+    ## 801   KE  Molecular
+    ## 249   KE  Molecular
+    ## 454   KE   Cellular
+    ## 796   KE   Cellular
+    ## 629   KE   Cellular
+    ## 733   KE   Cellular
+    ## 664   KE  Molecular
+    ## 611   KE   Cellular
+    ## 604   KE  Molecular
+    ## 675   KE   Cellular
+    ## 246   KE  Molecular
+    ## 462   KE     Tissue
+    ## 77   MIE  Molecular
+    ## 804   KE     Tissue
+    ## 191   KE   Cellular
+    ## 382   KE   Cellular
+    ## 212   KE   Cellular
+    ## 20   MIE  Molecular
+    ## 356   KE      Organ
+    ## 770   KE     Tissue
+    ## 166   KE   Cellular
+    ## 463   KE     Tissue
+    ## 495   KE      Organ
+    ## 558   KE     Tissue
+    ## 208   KE     Tissue
+    ## 402   KE     Tissue
+    ## 631   KE     Tissue
+    ## 849   AO Population
+    ## 373   KE     Tissue
+    ## 52   MIE   Cellular
+    ## 368   KE      Organ
+    ## 115  MIE  Molecular
+    ## 195   KE   Cellular
+    ## 661   KE  Molecular
+    ## 342   KE Population
+    ## 139  MIE  Molecular
+    ## 5    MIE  Molecular
+    ## 789   KE   Cellular
+    ## 33   MIE  Molecular
+    ## 196   KE   Cellular
+    ## 751   KE  Molecular
+    ## 353   KE     Tissue
+    ## 498   KE   Cellular
+    ## 76   MIE  Molecular
+    ## 108  MIE  Molecular
+    ## 223   KE     Tissue
+    ## 630   KE   Cellular
+    ## 746   KE      Organ
+    ## 83   MIE  Molecular
+    ## 485   KE  Molecular
+    ## 737   KE     Tissue
+    ## 588   KE   Cellular
+    ## 30   MIE  Molecular
+    ## 620   KE   Cellular
+    ## 917   AO Population
+    ## 578   KE Individual
+    ## 636   KE   Cellular
+    ## 451   KE   Cellular
+    ## 111  MIE  Molecular
+    ## 577   KE Individual
+    ## 315   KE      Organ
+    ## 669   KE  Molecular
+    ## 352   KE  Molecular
+    ## 204   KE      Organ
+    ## 247   KE  Molecular
+    ## 210   KE   Cellular
+    ## 783   KE     Tissue
+    ## 276   KE  Molecular
+    ## 808   KE   Cellular
+    ## 141  MIE  Molecular
+    ## 616   KE   Cellular
+    ## 635   KE     Tissue
+    ## 171   KE   Cellular
+    ## 165   KE   Cellular
+    ## 203   KE  Molecular
+    ## 649   KE  Molecular
+    ## 592   KE   Cellular
+    ## 258   KE   Cellular
+    ## 344   KE Population
+    ## 317   KE   Cellular
+    ## 307   KE  Molecular
+    ## 85   MIE  Molecular
+    ## 252   KE   Cellular
+    ## 179   KE Individual
+    ## 466   KE   Cellular
+    ## 129  MIE  Molecular
+    ## 551   KE   Cellular
+    ## 339   KE Individual
+    ## 271   KE     Tissue
+    ## 224   KE     Tissue
+    ## 367   KE Individual
+    ## 795   KE   Cellular
+    ## 499   KE Individual
+    ## 374   KE     Tissue
+    ## 69   MIE  Molecular
+    ## 726   KE   Cellular
+    ## 251   KE   Cellular
+    ## 403   KE     Tissue
+    ## 651   KE  Molecular
+    ## 284   KE      Organ
+    ## 321   KE     Tissue
+    ## 314   KE  Molecular
+    ## 169   KE     Tissue
+    ## 421   KE   Cellular
+    ## 270   KE      Organ
+    ## 34   MIE  Molecular
+    ## 293   KE   Cellular
+    ## 102  MIE  Molecular
+    ## 318   KE   Cellular
+    ## 673   KE  Molecular
+    ## 370   KE Individual
+    ## 465   KE      Organ
+    ## 456   KE      Organ
+    ## 134  MIE  Molecular
+    ## 348   KE     Tissue
+    ## 194   KE   Cellular
+    ## 114  MIE  Molecular
+    ## 552   KE   Cellular
+    ## 336   KE Individual
+    ## 486   KE   Cellular
+    ## 481   KE   Cellular
+    ## 771   KE   Cellular
+    ## 59   MIE  Molecular
+    ## 741   KE   Cellular
+    ## 176   KE      Organ
+    ## 638   KE     Tissue
+    ## 309   KE  Molecular
+    ## 121  MIE  Molecular
+    ## 393   KE   Cellular
+    ## 396   KE   Cellular
+    ## 554   KE     Tissue
+    ## 295   KE   Cellular
+    ## 590   KE  Molecular
+    ## 341   KE  Molecular
+    ## 192   KE   Cellular
+    ## 612   KE     Tissue
+    ## 648   KE  Molecular
+    ## 602   KE   Cellular
+    ## 759   KE     Tissue
+    ## 738   KE      Organ
+    ## 807   KE      Organ
+    ## 131  MIE  Molecular
+    ## 123  MIE  Molecular
+    ## 64   MIE  Molecular
+    ## 152   KE     Tissue
+    ## 464   KE     Tissue
+    ## 786   KE Individual
+    ## 761   KE   Cellular
+    ## 460   KE  Molecular
+    ## 301   KE  Molecular
+    ## 135  MIE  Molecular
+    ## 562   KE Individual
+    ## 810   KE Individual
+    ## 378   KE   Cellular
+    ## 453   KE  Molecular
+    ## 563   KE Individual
+    ## 302   KE  Molecular
+    ## 81   MIE  Molecular
+    ## 555   KE     Tissue
+    ## 654   KE  Molecular
+    ## 218   KE   Cellular
+    ## 769   KE   Cellular
+    ## 658   KE   Cellular
+    ## 334   KE Individual
+    ## 483   KE      Organ
+    ## 211   KE Individual
+    ## 221   KE     Tissue
+    ## 289   KE   Cellular
+    ## 335   KE   Cellular
+    ## 371   KE Individual
+    ## 793   KE   Cellular
+    ## 576   KE      Organ
+    ## 260   KE   Cellular
+    ## 699   KE   Cellular
+    ## 88   MIE  Molecular
+    ## 92   MIE  Molecular
+    ## 775   KE   Cellular
+    ## 290   KE   Cellular
+    ## 479   KE   Cellular
+    ## 329   KE   Cellular
+    ## 747   KE   Cellular
+    ## 784   KE  Molecular
+    ## 42   MIE  Molecular
+    ## 207   KE   Cellular
+    ## 46   MIE   Cellular
+    ## 375   KE     Tissue
+    ## 331   KE Population
+    ## 773   KE     Tissue
+    ## 457   KE     Tissue
+    ## 94   MIE   Cellular
+    ## 767   KE   Cellular
+    ## 45   MIE  Molecular
+    ## 70   MIE  Molecular
+    ## 826   AO Population
+    ## 916   AO      Organ
+    ## 861   AO     Tissue
+    ## 510   KE   Cellular
+    ## 157   KE Individual
+    ## 851   AO     Tissue
+    ## 881   AO Individual
+    ## 512   KE     Tissue
+    ## 857   AO   Cellular
+    ## 834   AO      Organ
+    ## 860   AO      Organ
+    ## 513   KE     Tissue
+    ## 898   AO Individual
+    ## 764   KE Individual
+    ## 843   AO Individual
+    ## 848   AO Population
+    ## 900   AO Individual
+    ## 828   AO Individual
+    ## 586   KE   Cellular
+    ## 640   KE  Molecular
+    ## 892   AO Population
+    ## 599   KE   Cellular
+    ## 821   AO Individual
+    ## 905   AO      Organ
+    ## 915   AO      Organ
+    ## 823   AO Individual
+    ## 819   AO Individual
+    ## 296   KE  Molecular
+    ## 844   AO Population
+    ## 863   AO      Organ
+    ## 876   AO      Organ
+    ## 877   AO      Organ
+    ## 894   AO Individual
+    ## 216   KE      Organ
+    ## 885   AO Individual
+    ## 838   AO Individual
+    ## 850   AO Population
+    ## 668   KE  Molecular
+    ## 893   AO      Organ
+    ## 833   AO     Tissue
+    ## 854   AO     Tissue
+    ## 778   KE  Molecular
+    ## 901   AO Individual
+    ## 903   AO Individual
+    ## 908   AO     Tissue
+    ## 841   AO      Organ
+    ## 896   AO Individual
+    ## 641   KE  Molecular
+    ## 904   AO Individual
+    ## 879   AO Population
+    ## 205   KE Individual
+    ## 913   AO Individual
+    ## 839   AO  Molecular
+    ## 887   AO      Organ
+    ## 310   KE  Molecular
+    ## 875   AO     Tissue
+    ## 829   AO Individual
+    ## 511   KE     Tissue
+    ## 862   AO Individual
+    ## 847   AO Individual
+    ## 864   AO     Tissue
+    ## 909   AO     Tissue
+    ## 888   AO      Organ
+    ## 884   AO      Organ
+    ## 596   KE   Cellular
+    ## 827   AO Individual
+    ## 895   AO  Molecular
+    ## 866   AO Individual
+    ## 911   AO Individual
+    ## 910   AO Individual
 
 ``` r
 # Strongly connected components
@@ -1650,7 +3076,10 @@ largest_gs <-  sna::component.largest(ms,result="graph",connected="strong")
 largest_gs <- graph_from_adjacency_matrix(largest_gs)
 middle_gs1 <- names(which(comp_gs$membership==which(comp_gs$csize!=1)[1]))
 middle_gs1 <- induced_subgraph(g,middle_gs1)
+middle_gs2 <- names(which(comp_gs$membership==which(comp_gs$csize!=1)[2]))
+middle_gs2 <- induced_subgraph(g,middle_gs2)
   
+
 # The largest strongly connected components
 V(largest_gs)$KE_type <- as.character( ke_all[match(V(largest_gs)$name,ke_all$ID),"Type"] )
 V(largest_gs)$ color <- ifelse (  V(largest_gs)$KE_type == "MIE", "lightgreen",   ifelse( V(largest_gs)$KE_type == "KE", "white",  ifelse ( V(largest_gs)$KE_type == "AO", "tomato", "black" ) )  )
@@ -1660,7 +3089,7 @@ l <- layout_with_fr(largest_gs)
 plot(largest_gs, vertex.label=NA, vertex.size=5, edge.arrow.size=0.2,  layout = l)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-4.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-4.png)<!-- -->
 
 ``` r
 dist_lgs <- distances(largest_gs)
@@ -1669,7 +3098,7 @@ dist_lgs2[!is.finite(dist_lgs2)] <- 0
 hist(dist_lgs2)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-5.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-5.png)<!-- -->
 
 ``` r
 # Draw graph again, but with the largest strongly connected components
@@ -1693,39 +3122,59 @@ plot(g2, vertex.size=3, vertex.color=V(g2)$scc_col, vertex.frame.color=V(g2)$scc
      edge.width=5, edge.color=E(g2)$scc_col, edge.arrow.size=0, layout=l2, add=TRUE)
 ```
 
-![](AOPwiki_figs/README-aop.network.analysis-6.png)<!-- -->
+![](AOPwiki_figs/AOPwiki-aop.network.analysis-6.png)<!-- -->
 
 ``` r
 # Investigate KEs of the largest strongly connected components
-na.exclude( ke_all[match(V(largest_gs)$name,ke_all$ID),] )
+na.exclude( KE_list_ident[match(V(largest_gs)$name,KE_list_ident$ID),c("Title","Type","Level")] )
 ```
 
-    ##                                                          ID Type
-    ## aop 11.key-event.id6   56d03689-9f66-494c-af12-f63245f1a8a6   KE
-    ## aop 216.key-event-id   7be434bc-3cba-48b4-99d6-61f99e0573fc  MIE
-    ## aop 35.key-event.id2   61d97890-1b0e-4bd7-9b0a-bda1e2b3df57   KE
-    ## aop 97.key-event.id    25cfcb9c-3378-4a99-8c4b-1f58d490702b   KE
-    ## aop 144.key-event.id16 6f70f165-30f7-4a55-8856-822d44180d85   KE
-    ## aop 1.key-event.id3    47adbded-a1f2-4ed9-8a51-d963190b3eb5   KE
-    ## aop 1.key-event.id4    c8bfc3a8-5ed4-4692-bc7c-4bd5a9a5137c   KE
-    ## aop 215.key-event-id   11b09029-3a99-445e-b5c4-2e91cc5f4173  MIE
-    ## aop 6.key-event.id3    5bda2a92-86a7-4b96-8e0d-287e67c6ba71   KE
-    ## aop 144.key-event.id17 c424f52c-88ef-4b15-b3c0-144aa916dd3d   KE
-    ## aop 99.key-event.id4   9914f9a5-cf4b-4c35-9b86-02523903c16b   KE
-    ## aop 97.key-event.id1   91056302-2808-444a-a42e-3e7c07dceb10   KE
-    ## aop 97.key-event.id5   c8e0cf37-96bf-40cb-8635-ef2e93984519   KE
-    ## aop 11.key-event.id5   d3c58429-dbc6-41bc-b9a6-f1de8239aeff   KE
-    ## aop 97.key-event.id3   d4a13f11-fa40-4209-a858-e607d799af9c   KE
+    ##                                                                 Title Type
+    ## 193                              Increased pro-inflammatory mediators   KE
+    ## 137                                                  Increase in RONS  MIE
+    ## 281                                            N/A, Neurodegeneration   KE
+    ## 461                          Increased, blood uric acid concentration   KE
+    ## 600                                          Altered, Gene Expression   KE
+    ## 147                                            N/A, Neuroinflammation   KE
+    ## 148 Degeneration of dopaminergic neurons of the nigrostriatal pathway   KE
+    ## 136                                              Increase, DNA Damage  MIE
+    ## 173                                            N/A, Cell injury/death   KE
+    ## 601                                       Altered, Protein Production   KE
+    ## 468                                  Leukocyte recruitment/activation   KE
+    ## 462                       Occurrence, renal proximal tubular necrosis   KE
+    ## 466                                       Increased, Oxidative Stress   KE
+    ## 192                                   Tissue resident cell activation   KE
+    ## 464                              Occurrence, tophi (urate) deposition   KE
+    ##         Level
+    ## 193    Tissue
+    ## 137 Molecular
+    ## 281    Tissue
+    ## 461    Tissue
+    ## 600 Molecular
+    ## 147    Tissue
+    ## 148     Organ
+    ## 136 Molecular
+    ## 173  Cellular
+    ## 601  Cellular
+    ## 468  Cellular
+    ## 462    Tissue
+    ## 466  Cellular
+    ## 192  Cellular
+    ## 464    Tissue
 
 ``` r
-rownames( na.exclude( ke_all[match(V(largest_gs)$name,ke_all$ID),] ) )
+# Investigate KEs of other strongly connected components
+na.exclude( KE_list_ident[match(V(middle_gs1)$name,KE_list_ident$ID),c("Title","Type","Level")] )
 ```
 
-    ##  [1] "aop 11.key-event.id6"   "aop 216.key-event-id"  
-    ##  [3] "aop 35.key-event.id2"   "aop 97.key-event.id"   
-    ##  [5] "aop 144.key-event.id16" "aop 1.key-event.id3"   
-    ##  [7] "aop 1.key-event.id4"    "aop 215.key-event-id"  
-    ##  [9] "aop 6.key-event.id3"    "aop 144.key-event.id17"
-    ## [11] "aop 99.key-event.id4"   "aop 97.key-event.id1"  
-    ## [13] "aop 97.key-event.id5"   "aop 11.key-event.id5"  
-    ## [15] "aop 97.key-event.id3"
+    ##                                                      Title Type      Level
+    ## 323                                       decreased reward   KE Individual
+    ## 325 decreased methylation of dopamine transporter promoter   KE   Cellular
+    ## 322                                     decreased dopamine   KE  Molecular
+    ## 324      decreased DNA methylation of tyrosine hydroxylase   KE   Cellular
+
+``` r
+aop[[45]]$title
+```
+
+    ## [1] "Epigenetic modification of PPARG leading to adipogenesis"
