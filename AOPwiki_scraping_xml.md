@@ -1,6 +1,6 @@
 AOP wiki web scraping
 ================
-
+Kyoshiro HIKI
 
 ``` r
 knitr::opts_chunk$set(echo = TRUE, message=FALSE,fig.path = "AOPwiki_figs/AOPwiki-") #echo=TRUE
@@ -172,7 +172,12 @@ colnames(ker_level) <- c("Weight of evidence","Quantitative understanding","Leve
 ker_level<-gather(ker_level,key=Type,value=value,'Weight of evidence','Quantitative understanding')
 ker_level2 <- transform(ker_level, Level=factor(Level,levels=c("Low","Moderate","High","Not Specified")) )
 
-ggplot(ker_level2) +geom_bar(aes(x=Level,y=value,fill=Type),stat = "identity", position = "dodge")+ylab("Number of KERs")+ theme_classic(base_size = 20)+ theme(axis.text=element_text(colour = "black"),legend.position = c(0.01, 1), legend.justification = c(0, 1))+labs(fill = "")
+ggplot(ker_level2) +
+  geom_bar(aes(x=Level,y=value,fill=Type),stat = "identity", position = "dodge")+
+  ylab("Number of Key Event Relationships")+
+  theme_linedraw(base_size = 18)+
+  theme(axis.text=element_text(colour = "black"),legend.position = c(0.01, 1), legend.justification = c(0, 1))+
+  labs(fill = "")
 ```
 
 ![](AOPwiki_figs/AOPwiki-read.xml-1.png)<!-- -->
@@ -737,7 +742,7 @@ g<- graph_from_data_frame(ker_all[,2:3],directed=TRUE)
 
 ## Add Keytype information to the nodes of graph (g)
 V(g)$KE_type <- as.character( ke_all[match(V(g)$name,ke_all$ID),"Type"] )
-V(g)$ color <- ifelse (  V(g)$KE_type == "MIE", "lightgreen",   ifelse( V(g)$KE_type == "KE", "white",  ifelse ( V(g)$KE_type == "AO", "tomato", "black" ) )  )
+V(g)$ color <- ifelse (  V(g)$KE_type == "MIE", "green",   ifelse( V(g)$KE_type == "KE", "white",  ifelse ( V(g)$KE_type == "AO", "red", "black" ) )  )
 ker_all[,6] <- table (ker_all[,1]) [ match (  ker_all[,1] , names(table (ker_all[,1] )) )]
 # V(g)$size <-rep(2,   length( V(g) )   )
 V(g)$freq <-   table ( c(as.character(ker_all[,2]), as.character(ker_all[,3]))  )
@@ -801,7 +806,7 @@ largest_g<- graph_from_adjacency_matrix(largest_g)
 
 # The largest weakly connected components
 V(largest_g)$KE_type <- as.character( ke_all[match(V(largest_g)$name,ke_all$ID),"Type"] )
-V(largest_g)$ color <- ifelse (  V(largest_g)$KE_type == "MIE", "lightgreen",   ifelse( V(largest_g)$KE_type == "KE", "white",  ifelse ( V(largest_g)$KE_type == "AO", "tomato", "black" ) )  )
+V(largest_g)$ color <- ifelse (  V(largest_g)$KE_type == "MIE", "green",   ifelse( V(largest_g)$KE_type == "KE", "white",  ifelse ( V(largest_g)$KE_type == "AO", "red", "black" ) )  )
 # V(largest_g)$size <-rep(2,   length( V(largest_g) )   )
 
  l <- layout_with_fr(largest_g)
@@ -3082,7 +3087,7 @@ middle_gs2 <- induced_subgraph(g,middle_gs2)
 
 # The largest strongly connected components
 V(largest_gs)$KE_type <- as.character( ke_all[match(V(largest_gs)$name,ke_all$ID),"Type"] )
-V(largest_gs)$ color <- ifelse (  V(largest_gs)$KE_type == "MIE", "lightgreen",   ifelse( V(largest_gs)$KE_type == "KE", "white",  ifelse ( V(largest_gs)$KE_type == "AO", "tomato", "black" ) )  )
+V(largest_gs)$ color <- ifelse (  V(largest_gs)$KE_type == "MIE", "green",   ifelse( V(largest_gs)$KE_type == "KE", "white",  ifelse ( V(largest_gs)$KE_type == "AO", "red", "black" ) )  )
 # V(largest_gs)$size <-rep(2,   length( V(largest_gs) )   )
 
 l <- layout_with_fr(largest_gs)
