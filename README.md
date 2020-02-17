@@ -10,7 +10,7 @@ AOP wikiのxmlを解析するためのRコード
 AOPに関する文献のbibliometricな分析をするためのRコード  
 
 3. aop-wiki-xml-2019-07-01.xml  
-AOP wikiのxmlファイル。これを上記Rコードで解析する。https://aopwiki.org/info_pages/5 の"XML"の"Permanent download"から取得。  
+AOP wikiのxmlファイル。これを上記Rコードで解析する。https://aopwiki.org/info_pages/5 の"XML"の"Permanent download"から取得した。  
 
 4. WoS_1-500.txtとWoS_501-938.txt  
-AOPに関する文献938件の情報。Web of Scienceから取得。  
+AOPに関する文献938件の情報。Web of Scienceから取得した。  
