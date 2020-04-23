@@ -1,5 +1,5 @@
 # R code for a review paper on AOP  
-このページは「生態毒性学におけるAdverse Outcome Pathway（AOP）研究の整理と展望」（環境毒性学会誌に投稿中）のRコードを掲載しています。  
+このページは「生態毒性学におけるAdverse Outcome Pathway（AOP）研究の整理と展望」（環境毒性学会誌に受理済み）のRコードを掲載しています。  
 This page shows the R code for a review paper on AOP (Adverse Outcome Pathways).  
 
 ## Fileの説明
