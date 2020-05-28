@@ -12,7 +12,9 @@ require(igraph)
 require(visNetwork)
 
 D <- readFiles("WoS_1-500.txt","WoS_501-938.txt") #WoS...are text files taken from Web of Science
+# If you use the latest version of bibliometrix (ver. > 3.0), use the following command: D <- c("WoS_1-500.txt","WoS_501-938.txt")
 M <- convert2df(D, dbsource = "isi", format = "plaintext")
+# If you use the latest version of bibliometrix (ver. > 3.0), use the following command: M <- convert2df(D, dbsource = "wos", format = "plaintext")
 ```
 
     ## 
